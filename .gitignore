@@ -12,3 +12,10 @@ node_modules/
 # IDE directories (optional)
 .vscode/
 .idea/
+
+# OS files
+.DS_Store  # MacOS
+Thumbs.db  # Windows
+
+# Docker
+docker-compose.override.yml
