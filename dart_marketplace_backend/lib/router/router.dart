@@ -140,6 +140,9 @@ Router dRouter(
   });
 
   router.post('/review/<itemId>', (shelf.Request request, String itemId) async {
+    final _senderAddress = EthPrivateKey.fromHex(privateKey).address;
+    final nonce = await _web3client.getTransactionCount(_senderAddress);
+    final chainId = await _web3client.getChainId();
     final payload = await request.readAsString();
     final data = jsonDecode(payload);
 
@@ -149,32 +152,39 @@ Router dRouter(
         contract: _contract,
         function: _addReview,
         parameters: [BigInt.parse(itemId), BigInt.from(data['rating']), data['comment']],
+        from: _senderAddress,
+        nonce: nonce,
       ),
+      chainId: chainId.toInt(),
     );
 
     return shelf.Response.ok('Review added successfully');
   });
 
   router.get('/reviews/<itemId>', (shelf.Request request, String itemId) async {
-    final reviews = await _web3client.call(
-      contract: _contract,
-      function: _getReviews,
-      params: [BigInt.parse(itemId)],
-    );
+    try {
+      final reviews = await _web3client.call(
+        contract: _contract,
+        function: _getReviews,
+        params: [BigInt.parse(itemId)],
+      );
 
-    List<Map<String, dynamic>> formattedReviews = [];
-    for (var review in reviews[0]) {
-      formattedReviews.add({
-        'reviewer': review[0],
-        'rating': review[1].toInt(),
-        'comment': review[2],
-      });
+      List<Map<String, dynamic>> formattedReviews = [];
+      for (var review in reviews[0]) {
+        formattedReviews.add({
+          'rating': review[1].toInt(),
+          'comment': review[2],
+        });
+      }
+
+      return shelf.Response.ok(
+        jsonEncode(formattedReviews),
+        headers: {'Content-Type': 'application/json'},
+      );
+    } catch (e) {
+      print('Error fetching reviews: $e');
+      return shelf.Response.internalServerError(body: 'Error fetching reviews: $e');
     }
-
-    return shelf.Response.ok(
-      jsonEncode(formattedReviews),
-      headers: {'Content-Type': 'application/json'},
-    );
   });
 
   return router;

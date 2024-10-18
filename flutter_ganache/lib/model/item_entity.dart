@@ -1,3 +1,5 @@
+import 'package:flutter_ganache/model/review_entity.dart';
+
 class Item {
   final int itemId;
   final String seller;
