@@ -1,0 +1,17 @@
+{
+  "name": "lab1",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "node": "npx hardhat node",
+    "deploy": "npx hardhat ignition deploy ignition/modules/HelloWorld.ts --network localhost"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.12"
+  }
+}
