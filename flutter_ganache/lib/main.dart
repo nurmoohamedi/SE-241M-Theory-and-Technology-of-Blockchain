@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:web3dart/web3dart.dart';
-import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 void main() {
@@ -21,7 +20,7 @@ class MainApp extends StatefulWidget {
 class _MainAppState extends State<MainApp> {
   bool isLoading = true;
 
-  final String _privatekey = '12b5c1961a1661ea8e632b176861f1573a74e452605f541844c0ecb4926b22a5';
+  final String _privatekey = '423614998ea46360de036952acbec8b808624a007ce3f9dd6d49b68b97fad2bf';
 
   late Web3Client web3client;
 
@@ -40,8 +39,8 @@ class _MainAppState extends State<MainApp> {
 
   Future<void> ready() async {
     await getABI();
-    // await getCredentials();
-    // await getDeployedContract();
+    await getCredentials();
+    await getDeployedContract();
   }
 
   late ContractAbi _abiCode;
@@ -57,21 +56,13 @@ class _MainAppState extends State<MainApp> {
 
       _abiCode = ContractAbi.fromJson(jsonEncode(jsonABI['abi']), 'HelloWorld');
 
-      if (jsonABI["networks"] != null) {
-        // Try to get the network ID dynamically
-        String? networkId = jsonABI["networks"]
-            .keys
-            .firstWhere((key) => jsonABI["networks"][key]["address"] != null, orElse: () => null);
+      // Try to get the network ID dynamically
+      final networkId = jsonABI["networks"]["5777"];
+      print('networkId');
+      print(networkId);
 
-        if (networkId != null) {
-          _contractAddress = EthereumAddress.fromHex(jsonABI["networks"][networkId]["address"]);
-          print('Contract Address: $_contractAddress');
-        } else {
-          print("No network with a contract address found");
-        }
-      } else {
-        print("No networks found in the JSON file");
-      }
+      _contractAddress = EthereumAddress.fromHex(networkId["address"]);
+      print('Contract Address: $_contractAddress');
     } catch (e) {
       print("Error in getABI: $e");
     }
@@ -102,7 +93,6 @@ class _MainAppState extends State<MainApp> {
     );
 
     final hello = data;
-    print('hello');
     print(hello);
   }
 
