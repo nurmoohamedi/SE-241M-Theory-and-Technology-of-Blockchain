@@ -1,108 +1,153 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_ganache/model/item_entity.dart';
 import 'package:http/http.dart' as http;
-import 'package:web3dart/web3dart.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 
 void main() {
   runApp(const MainApp());
 }
 
-class MainApp extends StatefulWidget {
+class MainApp extends StatelessWidget {
   const MainApp({super.key});
 
   @override
-  State<MainApp> createState() => _MainAppState();
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Marketplace DApp',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: const MarketplacePage(),
+    );
+  }
 }
 
-class _MainAppState extends State<MainApp> {
-  bool isLoading = true;
+class MarketplacePage extends StatefulWidget {
+  const MarketplacePage({super.key});
 
-  final String _privatekey = '423614998ea46360de036952acbec8b808624a007ce3f9dd6d49b68b97fad2bf';
+  @override
+  _MarketplacePageState createState() => _MarketplacePageState();
+}
 
-  late Web3Client web3client;
+class _MarketplacePageState extends State<MarketplacePage> {
+  List<Item> items = [];
 
-  final String wsUrl = 'ws://127.0.0.1:7545';
   @override
   void initState() {
     super.initState();
-
-    web3client = Web3Client(
-      "http://localhost:7545",
-      http.Client(),
-      socketConnector: () => WebSocketChannel.connect(Uri.parse(wsUrl)).cast<String>(),
-    );
-    ready();
+    _loadItems();
   }
 
-  Future<void> ready() async {
-    await getABI();
-    await getCredentials();
-    await getDeployedContract();
-  }
-
-  late ContractAbi _abiCode;
-  late EthereumAddress _contractAddress;
-
-  Future<void> getABI() async {
+  Future<void> _loadItems() async {
     try {
-      String abiFile = await rootBundle.loadString('build/contracts/HelloWorld.json');
-      print("ABI file loaded successfully");
-
-      var jsonABI = jsonDecode(abiFile);
-      print("Networks: ${jsonABI['networks']}");
-
-      _abiCode = ContractAbi.fromJson(jsonEncode(jsonABI['abi']), 'HelloWorld');
-
-      // Try to get the network ID dynamically
-      final networkId = jsonABI["networks"]["5777"];
-      print('networkId');
-      print(networkId);
-
-      _contractAddress = EthereumAddress.fromHex(networkId["address"]);
-      print('Contract Address: $_contractAddress');
-    } catch (e) {
-      print("Error in getABI: $e");
+      final response = await http.get(Uri.parse('http://127.0.0.1:8080/items'));
+      if (response.statusCode == 200) {
+        final List<dynamic> itemsJson = jsonDecode(response.body);
+        setState(() {
+          items = itemsJson.map((item) => Item.fromJson(item)).toList();
+        });
+      } else {
+        // Handle error
+        print('Failed to load items');
+      }
+    } catch (e, s) {
+      print('Failed to load items: $e, $s');
     }
   }
 
-  late EthPrivateKey _creds;
-  Future<void> getCredentials() async {
-    _creds = EthPrivateKey.fromHex(_privatekey);
-  }
+  Future<void> _listNewItem() async {
+    String name = '';
+    String description = '';
+    String price = '';
 
-  late DeployedContract _deployedContract;
-  late ContractFunction _getMessage;
-  late ContractFunction _setMessage;
-
-  Future<void> getDeployedContract() async {
-    _deployedContract = DeployedContract(_abiCode, _contractAddress);
-    _getMessage = _deployedContract.function('getMessage');
-    _setMessage = _deployedContract.function('setMessage');
-
-    await fetchUsers();
-  }
-
-  Future<void> fetchUsers() async {
-    var data = await web3client.call(
-      contract: _deployedContract,
-      function: _getMessage,
-      params: [],
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('List New Item'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              decoration: InputDecoration(labelText: 'Name'),
+              onChanged: (value) => name = value,
+            ),
+            TextField(
+              decoration: InputDecoration(labelText: 'Description'),
+              onChanged: (value) => description = value,
+            ),
+            TextField(
+              decoration: InputDecoration(labelText: 'Price (in wei)'),
+              onChanged: (value) => price = value,
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            child: Text('Cancel'),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          TextButton(
+            child: Text('List'),
+            onPressed: () async {
+              Navigator.of(context).pop();
+              final response = await http.post(
+                Uri.parse('http://localhost:8080/items'),
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode({
+                  'name': name,
+                  'description': description,
+                  'price': price,
+                }),
+              );
+              if (response.statusCode == 200) {
+                await _loadItems();
+              } else {
+                // Handle error
+                print('Failed to list item');
+              }
+            },
+          ),
+        ],
+      ),
     );
-
-    final hello = data;
-    print(hello);
   }
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
-        ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Marketplace DApp'),
+      ),
+      body: ListView.builder(
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return ListTile(
+            title: Text(item.name),
+            subtitle: Text('${item.description}\nPrice: ${item.price} wei'),
+            trailing: item.sold
+                ? Icon(Icons.check, color: Colors.green)
+                : ElevatedButton(
+                    child: Text('Buy'),
+                    onPressed: () async {
+                      final response = await http.post(
+                        Uri.parse('http://localhost:8080/purchase/${item.itemId}'),
+                      );
+                      if (response.statusCode == 200) {
+                        await _loadItems();
+                      } else {
+                        // Handle error
+                        print('Failed to purchase item');
+                      }
+                    },
+                  ),
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        child: Icon(Icons.add),
+        onPressed: _listNewItem,
       ),
     );
   }
