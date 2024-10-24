@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ERC20 Token DApp</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+</head>
+<body>
+  <h1>ERC20 Token DApp</h1>
+  <p>Your Balance: <span id="balance">Loading...</span> MTK</p>
+  <input type="text" id="recipient" placeholder="Recipient Address">
+  <input type="number" id="amount" placeholder="Amount">
+  <button onclick="transferTokens()">Transfer Tokens</button>
+
+  <script>
+    const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // Replace with actual address
+    const abi = [
+      "function balanceOf(address owner) view returns (uint256)",
+      "function transfer(address to, uint256 amount) returns (bool)",
+      "event Transfer(address indexed from, address indexed to, uint256 value)"
+    ];
+
+    async function getBalance() {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const contract = new ethers.Contract(contractAddress, abi, provider);
+      const signer = provider.getSigner();
+      const address = await signer.getAddress();
+      const balance = await contract.balanceOf(address);
+      document.getElementById("balance").innerText = ethers.utils.formatUnits(balance, 18);
+    }
+
+    async function transferTokens() {
+      const recipient = document.getElementById("recipient").value;
+      const amount = document.getElementById("amount").value;
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(contractAddress, abi, signer);
+      const tx = await contract.transfer(recipient, ethers.utils.parseUnits(amount, 18));
+      await tx.wait();
+      getBalance();
+      alert("Transfer Successful!");
+    }
+
+    window.onload = () => {
+      if (typeof window.ethereum !== 'undefined') {
+        getBalance();
+      } else {
+        alert("Please install MetaMask!");
+      }
+    }
+  </script>
+</body>
+</html>
