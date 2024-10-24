@@ -1,0 +1,31 @@
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #f4f4f4;
+}
+
+/* Стиль заголовка */
+h1 {
+    font-size: 48px;
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+/* Стиль кнопки */
+button {
+    padding: 15px 30px;
+    font-size: 24px;
+    cursor: pointer;
+    border: none;
+    background-color: #6200ea;
+    color: white;
+    border-radius: 5px;
+}
+
+button:hover {
+    background-color: #3700b3;
+}
